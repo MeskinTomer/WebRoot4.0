@@ -28,9 +28,14 @@ URI_ERROR = '/error'
 WEBROOT = os.path.join(os.path.dirname(__file__), 'webroot')
 INDEX = os.path.join(WEBROOT, 'index.html')
 
+# Images paths
+ERROR_IMAGE_PATH = os.path.join(os.path.dirname(__file__), 'images', 'error.jpg')
+FORBIDDEN_IMAGE_PATH = os.path.join(os.path.dirname(__file__), 'images', 'forbidden.jpg')
+NOT_FOUND__IMAGE_PATH = os.path.join(os.path.dirname(__file__), 'images', 'notFound.jpg')
+
 # HTTP headers
 HEADER_CONTENT_TYPE = b'Content-Type: '
-HEADER_CONTENT = b'Content-Length: '
+HEADER_CONTENT_LENGTH = b'Content-Length: '
 
 # Content types dictionary
 FILE_CONTENT_TYPES = {
@@ -49,16 +54,21 @@ HTTP_OK_200 = b'HTTP/1.1 200 OK\r\n'
 HTTP_TEMP_REDIRECT_302 = b'HTTP/1.1 302 TEMPORARY REDIRECT\r\n'
 HTTP_FORBIDDEN_403 = b'HTTP/1.1 403 Forbidden\r\n'
 HTTP_NOT_FOUND_404 = b'HTTP/1.1 404 Not Found\r\n'
-HTTP_INTERNAL_ERROR_505 = b'HTTP/1.1 500 Internal Server Error\r\n'
+HTTP_INTERNAL_ERROR_500 = b'HTTP/1.1 500 Internal Server Error\r\n'
 
-logging.basicConfig(filename = 'WebRoot_Server_log.log', level = logging.DEBUG)
+logging.basicConfig(filename='WebRoot_Server_log.log', level=logging.DEBUG)
 
-def get_file_data(file_name):
+
+def get_file_data(file_path):
     """
     Get data from file
-    :param file_name: the name of the file
-    :return: the file data in a string
+    :param file_path: the path of the intended file
+    :return: the file data in a string and the len of the data
     """
+    with open(file_path, 'rb') as file:
+        file_data = file.read()
+        file_content_len = len(file_data)
+    return file_data, file_content_len
 
 
 def handle_client_request(resource, client_socket):
@@ -69,33 +79,63 @@ def handle_client_request(resource, client_socket):
     :param client_socket: a socket for the communication with the client
     :return: None
     """
-    """ """
+    logging.debug("Handling client request: " + resource)
     # TO DO : add code that given a resource (URI and parameters) generates
     # the proper response
-    if resource == '':
+    if resource == '' or resource == '/':
         uri = URI_DEFAULT
     else:
         uri = resource
 
     # TO DO: check if URI had been redirected, not available or other error
     # code. For example:
-    if uri in REDIRECTION_DICTIONARY:
-        pass
         # TO DO: send 302 redirection response
+    try:
+        if uri == URI_MOVED:
+            logging.debug('URI Moved has been requested')
+            response = HTTP_TEMP_REDIRECT_302 + b'Location: /index.html\r\n\r\n'
+            client_socket.sendall(response)
+            handle_client_request('/', client_socket)
+            return
+        elif uri == URI_FORBIDDEN:
+            logging.debug('URI Forbidden has been requested')
+            image_data, image_content_len = get_file_data(FORBIDDEN_IMAGE_PATH)
+            image_content_type_header = HEADER_CONTENT_TYPE + FILE_CONTENT_TYPES.get('jpg', b'image/jpeg').encode() + b'\r\n'
+            image_content_len_header = HEADER_CONTENT_LENGTH + str(image_content_len).encode() + b'\r\n'
+            image_final = HTTP_FORBIDDEN_403 + image_content_type_header + image_content_len_header + b'\r\n' + image_data
+            client_socket.sendall(image_final)
+        elif uri == URI_ERROR:
+            logging.debug('URI Error has been requested')
+            image_data, image_content_len = get_file_data(ERROR_IMAGE_PATH)
+            image_content_type_header = HEADER_CONTENT_TYPE + FILE_CONTENT_TYPES.get('jpg', b'image/jpeg').encode() + b'\r\n'
+            image_content_len_header = HEADER_CONTENT_LENGTH + str(image_content_len).encode() + b'\r\n'
+            image_final = HTTP_INTERNAL_ERROR_500 + image_content_type_header + image_content_len_header + b'\r\n' + image_data
+            client_socket.sendall(image_final)
+        else:
+            filename = os.path.join(WEBROOT, uri.strip('/'))
+            if os.path.isdir(filename):
+                filename = os.path.join(filename, 'index.html')
+            file_extension = filename.split('.')[-1]
 
-    # TO DO: extract requested file tupe from URL (html, jpg etc)
-    if file_type == 'html':
-        http_header =  # TO DO: generate proper HTTP header
-    elif file_type == 'jpg':
-        http_header =  # TO DO: generate proper jpg header
-    # TO DO: handle all other headers
-
-    # TO DO: read the data from the file
-    data = get_file_data(filename)
-    # http_header should be encoded before sended
-    # data encoding depends on its content. text should be encoded, while files shouldn't
-    http_response = http_header.encode() + data
-    client_socket.send(http_response)
+            file_data, data_len = get_file_data(filename)
+            content_type_header = HEADER_CONTENT_TYPE + FILE_CONTENT_TYPES.get(file_extension, b'text/plain').encode() + b'\r\n'
+            content_len_header = HEADER_CONTENT_LENGTH + str(data_len).encode() + b'\r\n'
+            final_response = HTTP_OK_200 + content_type_header + content_len_header + b'\r\n' + file_data
+            client_socket.sendall(final_response)
+    except FileNotFoundError:
+        logging.debug('Not Found error occurred')
+        image_data, image_content_len = get_file_data(NOT_FOUND__IMAGE_PATH)
+        image_content_type_header = HEADER_CONTENT_TYPE + FILE_CONTENT_TYPES.get('jpg', b'image/jpeg').encode() + b'\r\n'
+        image_content_len_header = HEADER_CONTENT_LENGTH + str(image_content_len).encode() + b'\r\n'
+        image_final = HTTP_NOT_FOUND_404 + image_content_type_header + image_content_len_header + b'\r\n' + image_data
+        client_socket.sendall(image_final)
+    except Exception:
+        logging.debug('Internal Error error occurred')
+        image_data, image_content_len = get_file_data(ERROR_IMAGE_PATH)
+        image_content_type_header = HEADER_CONTENT_TYPE + FILE_CONTENT_TYPES.get('jpg', b'image/jpeg').encode() + b'\r\n'
+        image_content_len_header = HEADER_CONTENT_LENGTH + str(image_content_len).encode() + b'\r\n'
+        image_final = HTTP_INTERNAL_ERROR_500 + image_content_type_header + image_content_len_header + b'\r\n' + image_data
+        client_socket.sendall(image_final)
 
 
 def validate_http_request(request):
@@ -130,9 +170,6 @@ def validate_http_request(request):
         return False, ''
 
 
-
-
-
 def handle_client(client_socket):
     """
     Handles client requests: verifies client's requests are legal HTTP, calls
@@ -143,9 +180,6 @@ def handle_client(client_socket):
     print('Client connected')
     while True:
         try:
-
-        # TO DO: insert code that receives client request X
-        # ...
             client_request = ''
             while b'\r\n\r\n' not in client_request:
                 client_request += client_socket.recv(1).decode()
