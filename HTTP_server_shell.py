@@ -10,14 +10,48 @@
 import socket
 import logging
 import re
+import os
 # TO DO: set constants
 
 QUEUE_SIZE = 10
 IP = '0.0.0.0'
 PORT = 80
 SOCKET_TIMEOUT = 2
-VALID_HTTP_REQUESTS = ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'CONNECT', 'OPTIONS', 'TRACE']
 
+# Useful URIs
+URI_DEFAULT = '/index.html'
+URI_FORBIDDEN = '/forbidden'
+URI_MOVED = '/moved'
+URI_ERROR = '/error'
+
+# WebRoot paths
+WEBROOT = os.path.join(os.path.dirname(__file__), 'webroot')
+INDEX = os.path.join(WEBROOT, 'index.html')
+
+# HTTP headers
+HEADER_CONTENT_TYPE = b'Content-Type: '
+HEADER_CONTENT = b'Content-Length: '
+
+# Content types dictionary
+FILE_CONTENT_TYPES = {
+    'html': 'text/html;charset=utf-8',
+    'jpg': 'image/jpeg',
+    'css': 'text/css',
+    'js': 'text/javascript; charset=UTF-8',
+    'txt': 'text/plain',
+    'ico': 'image/x-icon',
+    'gif': 'image/jpeg',
+    'png': 'image/png'
+}
+
+# HTTP status codes
+HTTP_OK_200 = b'HTTP/1.1 200 OK\r\n'
+HTTP_TEMP_REDIRECT_302 = b'HTTP/1.1 302 TEMPORARY REDIRECT\r\n'
+HTTP_FORBIDDEN_403 = b'HTTP/1.1 403 Forbidden\r\n'
+HTTP_NOT_FOUND_404 = b'HTTP/1.1 404 Not Found\r\n'
+HTTP_INTERNAL_ERROR_505 = b'HTTP/1.1 500 Internal Server Error\r\n'
+
+logging.basicConfig(filename = 'WebRoot_Server_log.log', level = logging.DEBUG)
 
 def get_file_data(file_name):
     """
@@ -39,7 +73,7 @@ def handle_client_request(resource, client_socket):
     # TO DO : add code that given a resource (URI and parameters) generates
     # the proper response
     if resource == '':
-        uri = DEFAULT_URL
+        uri = URI_DEFAULT
     else:
         uri = resource
 
