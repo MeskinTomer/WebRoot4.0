@@ -108,21 +108,36 @@ def handle_client(client_socket):
     """
     print('Client connected')
     while True:
+        try:
+
         # TO DO: insert code that receives client request X
         # ...
-        client_request = ''
-        try:
+            client_request = ''
             while b'\r\n\r\n' not in client_request:
                 client_request += client_socket.recv(1).decode()
-        except socket.error:
-        valid_http, resource = validate_http_request(client_request)
-        if valid_http:
-            print('Got a valid HTTP request')
-            handle_client_request(resource, client_socket)
-        else:
-            print('Error: Not a valid HTTP request')
+
+            if client_request == '':
+                break
+
+            valid_http, resource = validate_http_request(client_request)
+
+            if valid_http:
+                print('Got a valid HTTP request')
+                handle_client_request(resource, client_socket)
+            else:
+                print('Error: Not a valid HTTP request')
+                logging.error('Error - invalid HTTP request')
+                break
+        except socket.timeout:
+            logging.debug('Socket connection timed out')
             break
+        except socket.error as error:
+            logging.error('Socket Error: ' + error)
+            break
+
     print('Closing connection')
+    logging.debug('Closing connection')
+    client_socket.close()
 
 
 def main():
