@@ -25,7 +25,7 @@ URI_MOVED = '/moved'
 URI_ERROR = '/error'
 
 # WebRoot paths
-WEBROOT = os.path.join(os.path.dirname(__file__), 'webroot')
+WEBROOT = r'C:\Users\tomer\Desktop\Python_Projects\WebRoot4.0\webroot.zip'
 INDEX = os.path.join(WEBROOT, 'index.html')
 
 # Images paths
@@ -80,16 +80,11 @@ def handle_client_request(resource, client_socket):
     :return: None
     """
     logging.debug("Handling client request: " + resource)
-    # TO DO : add code that given a resource (URI and parameters) generates
-    # the proper response
     if resource == '' or resource == '/':
         uri = URI_DEFAULT
     else:
         uri = resource
 
-    # TO DO: check if URI had been redirected, not available or other error
-    # code. For example:
-        # TO DO: send 302 redirection response
     try:
         if uri == URI_MOVED:
             logging.debug('URI Moved has been requested')
@@ -146,28 +141,22 @@ def validate_http_request(request):
     :return: a tuple of (True/False - depending if the request is valid,
     the requested resource )
     """
-    # TO DO: write function
-    # Is request empty
-    ok = True
     method, resource = '', ''
-    if request == '':
-        ok = False
+    if not request:
+        return False, ''
 
-    valid = re.match(rb'([A-Z]+) + (/.*) + HTTP/1.1', request)
+    valid = re.match(rb'([A-Z]+) +(/.*) +HTTP/1.1', request)
 
-    if valid is None:
-        ok = False
+    if not valid:
+        return False, ''
     else:
         method = valid.group(1).decode()
         resource = valid.group(2).decode()
 
         if method != 'GET':
-            ok = False
+            return False, ''
 
-    if ok:
-        return True, resource
-    else:
-        return False, ''
+    return True, resource
 
 
 def handle_client(client_socket):
@@ -180,9 +169,9 @@ def handle_client(client_socket):
     print('Client connected')
     while True:
         try:
-            client_request = ''
+            client_request = b''
             while b'\r\n\r\n' not in client_request:
-                client_request += client_socket.recv(1).decode()
+                client_request += client_socket.recv(1)
 
             if client_request == '':
                 break
@@ -200,7 +189,7 @@ def handle_client(client_socket):
             logging.debug('Socket connection timed out')
             break
         except socket.error as error:
-            logging.error('Socket Error: ' + error)
+            logging.error('Socket Error')
             break
 
     print('Closing connection')
