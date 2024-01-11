@@ -7,13 +7,16 @@
  Usage: Fill the missing functions and constants
 """
 # TO DO: import modules
-
+import socket
+import logging
+import re
 # TO DO: set constants
 
 QUEUE_SIZE = 10
 IP = '0.0.0.0'
 PORT = 80
 SOCKET_TIMEOUT = 2
+VALID_HTTP_REQUESTS = ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'CONNECT', 'OPTIONS', 'TRACE']
 
 
 def get_file_data(file_name):
@@ -33,16 +36,16 @@ def handle_client_request(resource, client_socket):
     :return: None
     """
     """ """
-    # TO DO : add code that given a resource (URL and parameters) generates
+    # TO DO : add code that given a resource (URI and parameters) generates
     # the proper response
     if resource == '':
         uri = DEFAULT_URL
     else:
         uri = resource
 
-    # TO DO: check if URL had been redirected, not available or other error
+    # TO DO: check if URI had been redirected, not available or other error
     # code. For example:
-    if url in REDIRECTION_DICTIONARY:
+    if uri in REDIRECTION_DICTIONARY:
         pass
         # TO DO: send 302 redirection response
 
@@ -70,6 +73,30 @@ def validate_http_request(request):
     the requested resource )
     """
     # TO DO: write function
+    # Is request empty
+    ok = True
+    method, resource = '', ''
+    if request == '':
+        ok = False
+
+    valid = re.match(rb'([A-Z]+) + (/.*) + HTTP/1.1', request)
+
+    if valid is None:
+        ok = False
+    else:
+        method = valid.group(1).decode()
+        resource = valid.group(2).decode()
+
+        if method != 'GET':
+            ok = False
+
+    if ok:
+        return True, resource
+    else:
+        return False, ''
+
+
+
 
 
 def handle_client(client_socket):
@@ -81,8 +108,13 @@ def handle_client(client_socket):
     """
     print('Client connected')
     while True:
-        # TO DO: insert code that receives client request
+        # TO DO: insert code that receives client request X
         # ...
+        client_request = ''
+        try:
+            while b'\r\n\r\n' not in client_request:
+                client_request += client_socket.recv(1).decode()
+        except socket.error:
         valid_http, resource = validate_http_request(client_request)
         if valid_http:
             print('Got a valid HTTP request')
